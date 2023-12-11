@@ -118,4 +118,37 @@ def calculate_toll_rate(df)->pd.DataFrame():
     df.drop('distance',axis=1,inplace=True)
     return df
 
+def calculate_time_based_toll_rates(df)->pd.DataFrame():
+    """
+    Calculate time-based toll rates for different time intervals within a day.
+
+    Args:
+        df (pandas.DataFrame)
+
+    Returns:
+        pandas.DataFrame
+    """
+
+    column_li = df.columns.tolist()
+    column_li[3:3] = ['start_day', 'start_time', 'end_day', 'end_time']
+    d = pd.DataFrame(columns=column_li)
+    info_dict = {1:['Monday','Friday',time(0, 0, 0),time(10, 0, 0),0.8], 
+                 2:['Tuesday','Saturday',time(10, 0, 0),time(18, 0, 0),1.2], 
+                 3:['Wednesday','Sunday',time(18, 0, 0),time(23, 59, 59),0.8],
+                 4:['Saturday','Sunday',time(0,0,0),time(23, 59, 59),0.7]}
+
+    for idx, row in df4.iterrows():
+        for i in range(4):
+            temp = row.copy()
+            temp['start_day'], temp['end_day'] = info_dict[i+1][0], info_dict[i+1][2]
+            temp['start_time'], temp['end_time'] = info_dict[i+1][1], info_dict[i+1][3]
+
+            discount_factor = info_dict[i+1][4]
+            temp[['moto', 'car', 'rv', 'bus', 'truck']] *= discount_factor
+
+            d = d.append(temp, ignore_index=False)
+        d['id_start'] = d['id_start'].astype(int)
+        d['id_end'] = d['id_end'].astype(int)
+
+    return d
 
