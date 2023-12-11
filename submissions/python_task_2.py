@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def calculate_distance_matrix(df)->pd.DataFrame:
+def calculate_distance_matrix(df)->pd.DataFrame():
     """
     Calculate a distance matrix based on the dataframe, df.
 
@@ -11,27 +11,39 @@ def calculate_distance_matrix(df)->pd.DataFrame:
     Returns:
         pandas.DataFrame: Distance matrix
     """
-    # Check if the required columns are present
-    # Create an empty distance matrix DataFrame
-    tolls = sorted(set(df['id_start'].unique()) | set(df['id_end'].unique()))
-    distance_matrix = pd.DataFrame(index=tolls, columns=tolls)
+    # Create a set of unique IDs
+    unique_ids = sorted(set(df['id_start'].unique()) | set(df['id_end'].unique()))
+
+    # Initialize an empty distance matrix
+    distance_matrix = pd.DataFrame(index=unique_ids, columns=unique_ids)
     distance_matrix = distance_matrix.fillna(0)
 
-    # Populate the distance matrix with known distances
-    for _, row in df.iterrows():
-        start_toll, end_toll, distance = row['id_start'], row['id_end'], row['distance']
-        distance_matrix.at[start_toll, end_toll] += distance
-        distance_matrix.at[end_toll, start_toll] += distance  # Account for bidirectional distances
+    # Populate the distance matrix with cumulative distances
+    for index, row in df.iterrows():
+        id_start, id_end, distance = row['id_start'], row['id_end'], row['distance']
+        distance_matrix.at[id_start, id_end] += distance
+
+    # Accumulate distances along known routes without doubling
+    for k in unique_ids:
+        for i in unique_ids:
+            for j in unique_ids:
+                if distance_matrix.at[i, k] > 0 and distance_matrix.at[k, j] > 0:
+                    if i != j:
+                        distance_matrix.at[i, j] += distance_matrix.at[i, k] + distance_matrix.at[k, j]
+                        
+   # Set diagonal values to 0
+    distance_matrix.values[[range(len(unique_ids))]*2] = 0
+    distance_matrix = distance_matrix + distance_matrix.T
 
     return distance_matrix
-
+    
 
 def unroll_distance_matrix(distance_matrix):
     """
     Unroll a distance matrix to a DataFrame in the style of the initial dataset.
 
     Args:
-        distance_matrix (pandas.DataFrame)
+        df (pandas.DataFrame)
 
     Returns:
         pandas.DataFrame: Unrolled DataFrame containing columns 'id_start', 'id_end', and 'distance'.
@@ -54,7 +66,7 @@ def unroll_distance_matrix(distance_matrix):
     return unrolled_distances
 
 
-def find_ids_within_ten_percentage_threshold(df, reference_id)->pd.DataFrame:
+def find_ids_within_ten_percentage_threshold(df, reference_id)->pd.DataFrame():
     """
     Find all IDs whose average distance lies within 10% of the average distance of the reference ID.
 
@@ -86,7 +98,8 @@ def find_ids_within_ten_percentage_threshold(df, reference_id)->pd.DataFrame:
     return within_threshold_ids
 
 
-def calculate_toll_rate(df)->pd.DataFrame:
+
+def calculate_toll_rate(df)->pd.DataFrame():
     """
     Calculate toll rates for each vehicle type based on the unrolled DataFrame.
 
@@ -102,6 +115,7 @@ def calculate_toll_rate(df)->pd.DataFrame:
     df['rv'] = 1.5 * df['distance']
     df['bus'] = 2.2 * df['distance']
     df['truck'] = 3.6 * df['distance']
-    df.drop('distance', axis=1,inplace=True)
-    
+    df.drop('distance',axis=1,inplace=True)
     return df
+
+
